@@ -1,0 +1,102 @@
+#!/bin/sh
+set -e
+
+WORKDIR=$(pwd)
+
+# 如果存在旧的目录和文件，就清理掉
+# 仅清理工作目录，不清理系统目录，因为默认用户每次使用新的容器进行构建（仓库中的构建指南是这么指导的）
+rm -rf *.tar.gz \
+    tar-1.35 \
+    tar-1.35-ohos-arm64
+
+# 下载一些命令行工具，并将它们软链接到 bin 目录中
+cd /opt
+echo "coreutils 9.10
+busybox 1.37.0
+grep 3.12
+gawk 5.3.2
+make 4.4.1" >/tmp/tools.txt
+while read -r name ver; do
+    curl -fSLO https://github.com/Harmonybrew/ohos-$name/releases/download/$ver/$name-$ver-ohos-arm64.tar.gz
+done </tmp/tools.txt
+ls | grep tar.gz$ | xargs -n 1 tar -zxf
+ln -sf $(pwd)/*-ohos-arm64/bin/* /bin/
+
+# 准备鸿蒙版 ohos-sdk
+sdk_download_url="https://cidownload.openharmony.cn/version/Master_Version/ohos-sdk-public_ohos/20251209_020142/version-Master_Version-ohos-sdk-public_ohos-20251209_020142-ohos-sdk-public_ohos.tar.gz"
+curl -fSL -o ohos-sdk.tar.gz $sdk_download_url
+mkdir /opt/ohos-sdk
+tar -zxf ohos-sdk.tar.gz -C /opt/ohos-sdk
+rm -f ohos-sdk.tar.gz
+cd /opt/ohos-sdk/ohos
+busybox unzip -q native-*.zip
+rm -rf *.zip
+
+# 把 llvm 里面的命令封装一份放到 /bin 目录下，只封装必要的工具。
+# 为了照顾 clang （clang 软链接到其他目录使用会找不到 sysroot），
+# 对所有命令统一用这种封装的方案，而非软链接。
+essential_tools="clang
+clang++
+clang-cpp
+ld.lld
+lldb
+llvm-addr2line
+llvm-ar
+llvm-cxxfilt
+llvm-nm
+llvm-objcopy
+llvm-objdump
+llvm-ranlib
+llvm-readelf
+llvm-size
+llvm-strings
+llvm-strip"
+for executable in $essential_tools; do
+    cat <<EOF > /bin/$executable
+#!/bin/sh
+exec /opt/ohos-sdk/ohos/native/llvm/bin/$executable "\$@"
+EOF
+    chmod 0755 /bin/$executable
+done
+
+# 把 llvm 软链接成 cc、gcc 等命令
+cd /bin
+ln -s clang cc
+ln -s clang gcc
+ln -s clang++ c++
+ln -s clang++ g++
+ln -s ld.lld ld
+ln -s llvm-addr2line addr2line
+ln -s llvm-ar ar
+ln -s llvm-cxxfilt c++filt
+ln -s llvm-nm nm
+ln -s llvm-objcopy objcopy
+ln -s llvm-objdump objdump
+ln -s llvm-ranlib ranlib
+ln -s llvm-readelf readelf
+ln -s llvm-size size
+ln -s llvm-strip strip
+
+cd $WORKDIR
+
+# 编译 tar
+curl -fSLO https://ftp.gnu.org/gnu/tar/tar-1.35.tar.gz
+tar zxf tar-1.35.tar.gz
+cd tar-1.35
+./configure --prefix=/opt/tar-1.35-ohos-arm64 FORCE_UNSAFE_CONFIGURE=1
+make -j$(nproc)
+make install
+cd ..
+
+# 履行开源义务，将 license 随制品一起发布
+cp tar-1.35/COPYING /opt/tar-1.35-ohos-arm64/
+cp tar-1.35/AUTHORS /opt/tar-1.35-ohos-arm64/
+
+# 打包最终产物
+cp -r /opt/tar-1.35-ohos-arm64 ./
+tar -zcf tar-1.35-ohos-arm64.tar.gz tar-1.35-ohos-arm64
+
+# 这一步是针对手动构建场景做优化。
+# 在 docker run --rm -it 的用法下，有可能文件还没落盘，容器就已经退出并被删除，从而导致压缩文件损坏。
+# 使用 sync 命令强制让文件落盘，可以避免那种情况的发生。
+sync
