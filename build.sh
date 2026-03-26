@@ -20,13 +20,14 @@ while read -r name ver; do
     curl -fLO https://github.com/Harmonybrew/ohos-$name/releases/download/$ver/$name-$ver-ohos-arm64.tar.gz
 done </tmp/tools.txt
 ls | grep tar.gz$ | xargs -n 1 tar -zxf
+rm -rf *.tar.gz
 ln -sf $(pwd)/*-ohos-arm64/bin/* /bin/
 
 # 准备 ohos-sdk
 curl -fL -o ohos-sdk-full_6.1-Release.tar.gz https://cidownload.openharmony.cn/version/Master_Version/OpenHarmony_6.1.0.31/20260311_020435/version-Master_Version-OpenHarmony_6.1.0.31-20260311_020435-ohos-sdk-full_6.1-Release.tar.gz
-tar -zxf ohos-sdk-full_6.1-Release.tar.gz -C /opt
-rm -rf ohos-sdk-full_6.1-Release.tar.gz /opt/ohos-sdk/windows /opt/ohos-sdk/linux
-cd /opt/ohos-sdk/ohos
+tar -zxf ohos-sdk-full_6.1-Release.tar.gz
+rm -rf ohos-sdk-full_6.1-Release.tar.gz ohos-sdk/windows ohos-sdk/linux
+cd ohos-sdk/ohos
 busybox unzip -q native-*.zip
 busybox unzip -q toolchains-*.zip
 rm -rf *.zip
