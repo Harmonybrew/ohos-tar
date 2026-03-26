@@ -82,7 +82,7 @@ cd $WORKDIR
 
 # 编译 tar
 curl -fLO https://ftp.gnu.org/gnu/tar/tar-1.35.tar.gz
-tar zxf tar-1.35.tar.gz
+tar -zxf tar-1.35.tar.gz
 cd tar-1.35
 ./configure --prefix=/opt/tar-1.35-ohos-arm64 FORCE_UNSAFE_CONFIGURE=1
 make -j$(nproc)

@@ -44,12 +44,9 @@ export PATH=/data/tar-1.35-ohos-arm64/bin:$PATH
 
 示例：
 ```sh
-docker run -itd --name=ohos ghcr.io/hqzing/dockerharmony:latest
-docker exec -it ohos sh
-
-cd /root
+cd /opt
 curl -fLO https://github.com/Harmonybrew/ohos-tar/releases/download/1.35/tar-1.35-ohos-arm64.tar.gz
-tar -zxf tar-1.35-ohos-arm64.tar.gz -C /opt
+tar -zxf tar-1.35-ohos-arm64.tar.gz
 export PATH=/opt/tar-1.35-ohos-arm64/bin:$PATH
 
 # 现在可以使用 tar 命令了
@@ -67,7 +64,6 @@ export PATH=/opt/tar-1.35-ohos-arm64/bin:$PATH
 ```sh
 git clone https://github.com/Harmonybrew/ohos-tar.git
 cd ohos-tar
-
 docker run \
   --rm \
   -it \
